@@ -1,0 +1,17 @@
+name: metratec_rfid_example
+description: Debug interface example for the metratec_rfid_reader package.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  logger: ^2.0.2+1
+  metratec_rfid_reader:
+    path: ../
+
+flutter:
+  uses-material-design: true

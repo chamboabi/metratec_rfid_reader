@@ -1,0 +1,39 @@
+name: metratec_rfid_reader
+description: >
+  Cross-platform Metratec UHF RFID reader library using the AT command protocol.
+  Supports Web Serial API (browser), native serial (desktop), USB (Android), and TCP.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Cross-platform
+  async: ^2.11.0
+  collection: ^1.17.1
+  logger: ^2.0.2+1
+  intl: ^0.19.0
+
+  # Web platform (Web Serial API)
+  web: ^1.1.1
+
+  # Native: Desktop serial (Linux, macOS, Windows)
+  flutter_libserialport:
+    git:
+      url: https://github.com/snabble/flutter_libserialport.git
+      ref: 0.5.0
+
+  # Native: Android USB serial
+  usb_serial: ^0.5.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
