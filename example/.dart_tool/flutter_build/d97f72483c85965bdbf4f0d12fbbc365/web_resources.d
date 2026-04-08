@@ -1,0 +1,1 @@
+ /home/willi/workspace/flutterprojects/metratec_rfid_reader/example/build/web/manifest.json:  /home/willi/workspace/flutterprojects/metratec_rfid_reader/example/web/index.html /home/willi/workspace/flutterprojects/metratec_rfid_reader/example/web/manifest.json
