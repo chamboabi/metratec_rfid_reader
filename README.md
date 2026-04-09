@@ -304,7 +304,10 @@ To run it:
 
 ```bash
 cd example
-flutter run -d chrome
+
+flutter create .
+
+flutter run
 ```
 
 ## Requirements

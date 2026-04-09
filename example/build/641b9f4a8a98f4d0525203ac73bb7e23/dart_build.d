@@ -1,1 +1,0 @@
- /home/willi/workspace/flutterprojects/metratec_rfid_reader/example/build/641b9f4a8a98f4d0525203ac73bb7e23/dart_build_result.json: 

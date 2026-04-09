@@ -1,1 +1,0 @@
- /home/willi/workspace/flutterprojects/metratecWebReader/example/build/web/manifest.json:  /home/willi/workspace/flutterprojects/metratecWebReader/example/web/index.html /home/willi/workspace/flutterprojects/metratecWebReader/example/web/manifest.json
