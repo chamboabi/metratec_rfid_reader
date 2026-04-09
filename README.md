@@ -1,6 +1,12 @@
-# metratec_rfid_reader
+# Flutter Metratec RFID Reader
 
 A cross-platform Flutter/Dart library for communicating with **Metratec UHF RFID readers** using the AT command protocol.
+
+## Disclaimer
+
+Depends on the work from Metratec, only the Web Implementation is written by me.
+
+I am not affiliated with or endorsed by Metratec. This code builds upon preexisting work developed by Metratec; I am solely responsible for the implementation of the web interface.
 
 ## Features
 
