@@ -167,6 +167,11 @@ abstract class Parser {
   /// Cancels the receive stream subscription and closes the underlying
   /// transport. Safe to call even if already disconnected.
   Future<void> disconnect() async {
+    // Unblock any command awaiting a response so its caller's `finally`
+    // (e.g. resetting a busy flag) still runs instead of hanging forever.
+    if (responseEntry != null) {
+      finishCommand(CmdExitCode.canceled);
+    }
     try {
       await _rxSub?.cancel();
     } catch (_) {}
