@@ -121,6 +121,50 @@ enum UhfReaderRegion {
       };
 }
 
+/// Reader models this library knows about.
+///
+/// Recognised from the `ATI` reply by [UhfReaderAt.getDeviceInfo]. The
+/// model decides whether multiplexed (multi-antenna) inventory is
+/// available and what power range the hardware accepts.
+enum UhfReaderModel {
+  /// Metratec DeskID UHF (v2): single antenna desk reader, 0-9 dBm.
+  deskIdUhf,
+
+  /// Metratec PulsarLR: four antenna ports, 0-30 dBm, supports
+  /// [UhfReaderAt.muxInventory] and [UhfReaderAt.startContinuousMuxInventory].
+  pulsarLr,
+
+  /// Any other or not yet identified reader.
+  unknown;
+
+  /// Whether the model has several antenna ports and supports the
+  /// `AT+MUX` / `AT+MINV` / `AT+CMINV` commands.
+  bool get supportsMux => this == UhfReaderModel.pulsarLr;
+
+  /// Lowest output power in dBm the model accepts, where known.
+  int get minPower => 0;
+
+  /// Highest output power in dBm the model accepts. Readers not listed
+  /// here get the widest range Metratec UHF readers use.
+  int get maxPower => switch (this) {
+        UhfReaderModel.deskIdUhf => 9,
+        UhfReaderModel.pulsarLr => 30,
+        UhfReaderModel.unknown => 30,
+      };
+
+  /// Recognises the model in an `ATI` reply such as
+  /// `+SW: DESKID_UHF_V2E 1.4.0` / `+HW: PULSAR_LR 2.0`.
+  /// Matching is case-insensitive and ignores separators, so
+  /// `DeskID_UHF`, `DESKID-UHF` and `deskid uhf` are all recognised.
+  static UhfReaderModel fromDeviceInfo(String info) {
+    final normalised =
+        info.toLowerCase().replaceAll(RegExp(r'[\s_\-]+'), '');
+    if (normalised.contains('pulsar')) return UhfReaderModel.pulsarLr;
+    if (normalised.contains('deskid')) return UhfReaderModel.deskIdUhf;
+    return UhfReaderModel.unknown;
+  }
+}
+
 /// High-level API for Metratec UHF RFID readers using the AT protocol.
 ///
 /// This is the primary user-facing class in the library. It wraps a
@@ -401,8 +445,17 @@ class UhfReaderAt {
     } catch (e) {
       throw ReaderException("Failed to get device info: $e");
     }
+    lastDeviceInfo = info;
+    readerModel = UhfReaderModel.fromDeviceInfo(info);
     return info;
   }
+
+  /// The raw `ATI` reply of the last successful [getDeviceInfo] call.
+  String? lastDeviceInfo;
+
+  /// The reader model recognised in the last [getDeviceInfo] reply, or
+  /// [UhfReaderModel.unknown] before the first call.
+  UhfReaderModel readerModel = UhfReaderModel.unknown;
 
   // ── Feedback (AT+FDB) ──────────────────────────────────────────────────
 
@@ -553,6 +606,38 @@ class UhfReaderAt {
       rethrow;
     } catch (e) {
       throw ReaderException('Failed to start continuous inventory: $e');
+    }
+  }
+
+  /// Starts continuous multiplexed inventory scanning on multi-antenna
+  /// readers (e.g. PulsarLR).
+  ///
+  /// Sends the `AT+CMINV` command. The reader cycles through the antenna
+  /// ports selected with [setMuxAntenna]; tag results arrive asynchronously
+  /// via [cinvStream] as unsolicited `+CMINV` events, one batch per
+  /// finished antenna round, with [UhfInventoryResult.lastAntenna] set to
+  /// the port that round was scanned on.
+  ///
+  /// Call [stopContinuousInventory] to stop scanning; `AT+BINV` ends both
+  /// plain and multiplexed continuous inventory.
+  ///
+  /// Throws [ReaderTimeoutException] if the reader does not respond.
+  /// Throws [ReaderException] on readers without multiplexing.
+  Future<void> startContinuousMuxInventory() async {
+    try {
+      _invSettings = await getInventorySettings();
+    } catch (e) {
+      logger.w('Could not read inv settings, using defaults', error: e);
+      _invSettings ??= UhfInvSettings(false, false, false, false);
+    }
+
+    try {
+      CmdExitCode exitCode = await sendCommand("AT+CMINV", 1000, []);
+      _handleExitCode(exitCode, "");
+    } on ReaderException {
+      rethrow;
+    } catch (e) {
+      throw ReaderException('Failed to start continuous mux inventory: $e');
     }
   }
 
@@ -772,6 +857,70 @@ class UhfReaderAt {
       rethrow;
     } catch (e) {
       throw ReaderException('Failed to set antenna: $e');
+    }
+  }
+
+  /// Gets the antenna ports used for multiplexed inventory.
+  ///
+  /// Sends `AT+MUX?` and returns the 1-based port numbers the reader
+  /// cycles through in [muxInventory] and [startContinuousMuxInventory].
+  /// Also updates [currentMuxAntenna].
+  ///
+  /// Throws [ReaderTimeoutException] if the reader does not respond.
+  /// Throws [ReaderException] on readers without multiplexing.
+  Future<List<int>> getMuxAntenna() async {
+    String error = "";
+    try {
+      CmdExitCode exitCode = await sendCommand("AT+MUX?", 1000, [
+        ParserResponse("+MUX", (line) {
+          final ports = line
+              .split(",")
+              .map((e) => int.tryParse(e.trim()))
+              .whereType<int>()
+              .toList();
+          if (ports.isNotEmpty) currentMuxAntenna = ports;
+        })
+      ]);
+      _handleExitCode(exitCode, error);
+    } on ReaderException {
+      rethrow;
+    } catch (e) {
+      throw ReaderException('Failed to get mux antennas: $e');
+    }
+    return currentMuxAntenna;
+  }
+
+  /// Sets the antenna ports used for multiplexed inventory.
+  ///
+  /// [ports] is a list of 1-based port numbers, e.g. `[1, 2, 3]` to scan
+  /// three of the four ports of a PulsarLR. The reader cycles through them
+  /// in the given order in [muxInventory] and [startContinuousMuxInventory].
+  /// Also updates [currentMuxAntenna].
+  ///
+  /// Throws [ReaderException] if [ports] is empty, names a port the reader
+  /// does not have, or the reader does not support multiplexing.
+  /// Throws [ReaderTimeoutException] if the reader does not respond.
+  Future<void> setMuxAntenna(List<int> ports) async {
+    if (ports.isEmpty) {
+      throw ReaderException('At least one antenna port is required');
+    }
+    if (ports.any((p) => p < 1)) {
+      throw ReaderException('Antenna ports are numbered from 1');
+    }
+    String error = "";
+    try {
+      CmdExitCode exitCode =
+          await sendCommand("AT+MUX=${ports.join(",")}", 1000, [
+        ParserResponse("+MUX", (line) {
+          error = line;
+        })
+      ]);
+      _handleExitCode(exitCode, error);
+      currentMuxAntenna = List<int>.from(ports);
+    } on ReaderException {
+      rethrow;
+    } catch (e) {
+      throw ReaderException('Failed to set mux antennas: $e');
     }
   }
 

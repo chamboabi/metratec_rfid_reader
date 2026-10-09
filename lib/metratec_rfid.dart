@@ -31,7 +31,13 @@ export 'src/parser/parser_at.dart' show ParserAt;
 // ── Reader ──────────────────────────────────────────────────────────────────
 export 'src/reader/reader_exception.dart';
 export 'src/reader/reader_uhf_at.dart'
-    show UhfReaderAt, UhfInvSettings, UhfRwResult, UhfMemoryBank, UhfReaderRegion;
+    show
+        UhfReaderAt,
+        UhfInvSettings,
+        UhfRwResult,
+        UhfMemoryBank,
+        UhfReaderRegion,
+        UhfReaderModel;
 
 // ── Models ──────────────────────────────────────────────────────────────────
 export 'src/models/inventory_result.dart' show InventoryResult;

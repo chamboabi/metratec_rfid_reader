@@ -2,7 +2,7 @@ name: metratec_rfid_reader
 description: >
   Cross-platform Metratec UHF RFID reader library using the AT command protocol.
   Supports Web Serial API (browser), native serial (desktop), USB (Android), and TCP.
-version: 1.0.0
+version: 1.1.0
 publish_to: none
 
 environment:

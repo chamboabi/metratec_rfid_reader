@@ -148,6 +148,29 @@ await reader.startContinuousInventory();
 await reader.stopContinuousInventory();
 ```
 
+### Multi-Antenna Readers (PulsarLR)
+
+```dart
+// Pick the antenna ports to cycle through (1-based)
+await reader.setMuxAntenna([1, 2, 3]);
+
+// One multiplexed scan over those ports; results carry the port number
+final results = await reader.muxInventory();
+for (final r in results) {
+  print('Tag: ${r.tag.epc} on antenna ${r.lastAntenna}');
+}
+
+// Or scan continuously over those ports; stop with stopContinuousInventory()
+await reader.startContinuousMuxInventory();
+
+// Per-antenna power: one value per port, or a single value for all ports
+await reader.setOutputPower([20, 20, 20, 0]);
+
+// The model is recognised from the ATI reply
+await reader.getDeviceInfo();
+if (reader.readerModel.supportsMux) { /* ... */ }
+```
+
 ### Reading and Writing Tag Memory
 
 ```dart
@@ -253,11 +276,13 @@ for (final line in result.lines) {
 | Connection | `disconnect()` | Disconnect from the reader |
 | Connection | `isConnected()` | Check connection status |
 | Identity | `getDeviceInfo()` | Get device identification (ATI) |
+| Identity | `readerModel` | Model recognised from ATI (`UhfReaderModel`) |
 | Feedback | `playFeedback(id)` | Trigger beep/LED pattern |
 | Inventory | `inventory()` | Single inventory scan |
 | Inventory | `muxInventory()` | Multiplexed multi-antenna inventory |
 | Inventory | `startContinuousInventory()` | Start continuous scanning |
-| Inventory | `stopContinuousInventory()` | Stop continuous scanning |
+| Inventory | `startContinuousMuxInventory()` | Start continuous multi-antenna scanning |
+| Inventory | `stopContinuousInventory()` | Stop continuous scanning (plain or mux) |
 | Inventory | `cinvStream` | Stream of continuous inventory results |
 | Inventory | `getInventorySettings()` | Get ONT/RSSI/TID/FastStart config |
 | Inventory | `setInventorySettings()` | Set inventory format |
@@ -265,6 +290,7 @@ for (final line in result.lines) {
 | Power | `setOutputPower()` | Set power level(s) |
 | Region | `getRegion()` / `setRegion()` | Regulatory region (ETSI, FCC, ...) |
 | Antenna | `getInvAntenna()` / `setInvAntenna()` | Active antenna port |
+| Antenna | `getMuxAntenna()` / `setMuxAntenna()` | Ports cycled by mux inventory |
 | Q Value | `getQ()` / `setQ()` | Anti-collision Q parameter |
 | Session | `getSession()` / `setSession()` | Gen2 session |
 | RF Mode | `getRfMode()` / `setRfMode()` | RF modulation mode |
